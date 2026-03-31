@@ -1,7 +1,6 @@
 """SEO Checker CLI - Analyze any website for SEO issues."""
 
 import argparse
-import sys
 import os
 from urllib.parse import urlparse
 from datetime import datetime

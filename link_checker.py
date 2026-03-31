@@ -7,6 +7,7 @@ except ModuleNotFoundError:
 
 from dataclasses import dataclass, field
 from urllib.parse import urljoin, urlparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from bs4 import BeautifulSoup
 
@@ -90,31 +91,37 @@ class LinkChecker:
         return result
 
     def check_link_status(self, links: list, max_checks: int = 50) -> list:
-        """Check HTTP status codes for internal links."""
+        """Check HTTP status codes for internal links concurrently."""
         broken = []
-        checked = 0
+        links_to_check = links[:max_checks]
 
-        for link in links:
-            if checked >= max_checks:
-                break
-
+        def check_single_link(link):
             full_url = (
                 link.href
                 if link.href.startswith("http")
-                else link.source_url.rsplit("/", 1)[0] + "/" + link.href
+                else link.source_url.rsplit("/", 1)[0] + "/" + link.href.lstrip("/")
             )
-
             try:
                 exists, status_code = self.client.check_url_exists(full_url)
                 link.status_code = status_code
-
                 if not exists:
                     link.is_broken = True
-                    broken.append(link)
+                    return link
             except Exception:
-                pass
+                link.is_broken = True
+                link.status_code = 0
+                return link
+            return None
 
-            checked += 1
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_link = {executor.submit(check_single_link, link): link for link in links_to_check}
+            for future in as_completed(future_to_link):
+                try:
+                    result = future.result()
+                    if result:
+                        broken.append(result)
+                except Exception:
+                    pass
 
         return broken
 

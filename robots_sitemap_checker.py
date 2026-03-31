@@ -146,13 +146,30 @@ class RobotsAndSitemapChecker:
             return result
 
         result.exists = True
-        result.sitemap_urls = sitemap_urls
+        result.sitemap_urls = list(set(sitemap_urls))
 
-        for sitemap_url in sitemap_urls:
+        visited = set()
+        urls_to_check = list(result.sitemap_urls)
+
+        while urls_to_check:
+            sitemap_url = urls_to_check.pop(0)
+            if sitemap_url in visited:
+                continue
+            visited.add(sitemap_url)
+
             try:
                 response = self.client.fetch(sitemap_url)
                 final_url = response.url
+
+                # Check for new sitemaps discovered
+                before_count = len(result.sitemap_urls)
                 self._parse_sitemap(response.text, final_url, result)
+
+                # If _parse_sitemap found new sitemap index entries, enqueue them
+                for new_url in result.sitemap_urls[before_count:]:
+                    if new_url not in visited and new_url not in urls_to_check:
+                        urls_to_check.append(new_url)
+
             except Exception as e:
                 result.issues.append(
                     {

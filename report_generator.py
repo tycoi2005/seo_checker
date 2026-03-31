@@ -412,7 +412,7 @@ class ReportGenerator:
                 "total_links": links.total_links,
                 "internal_links_count": len(links.internal_links),
                 "external_links_count": len(links.external_links),
-                "broken_links": [{"href": l.href, "status": l.status_code} for l in links.broken_links],
+                "broken_links": [{"href": link.href, "status": link.status_code} for link in links.broken_links],
                 "orphaned_pages": links.orphaned_pages,
                 "issues": links.issues,
             },

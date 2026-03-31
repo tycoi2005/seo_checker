@@ -1,11 +1,13 @@
 """HTTP client utilities for fetching web pages."""
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from urllib.parse import urlparse
 
 
 class HttpClient:
-    """Handles HTTP requests with proper error handling and headers."""
+    """Handles HTTP requests with proper error handling, retries, and headers."""
 
     DEFAULT_HEADERS = {
         "User-Agent": "Mozilla/5.0 (compatible; SEO-Checker/1.0)",
@@ -22,6 +24,18 @@ class HttpClient:
 
     def __init__(self, timeout: int = 30):
         self.session = requests.Session()
+
+        # Configure retries
+        retries = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["HEAD", "GET", "OPTIONS"]
+        )
+        adapter = HTTPAdapter(max_retries=retries)
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
+
         self.session.headers.update(self.DEFAULT_HEADERS)
         self.timeout = timeout
 
