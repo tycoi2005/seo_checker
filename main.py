@@ -8,15 +8,15 @@ from datetime import datetime
 
 try:
     from seo_checker.http_client import HttpClient
-    from seo_checker.meta_checker import MetaTagChecker
+    from seo_checker.meta_checker import MetaTagChecker, MetaTagAnalysis
     from seo_checker.robots_sitemap_checker import RobotsAndSitemapChecker
-    from seo_checker.link_checker import LinkChecker
+    from seo_checker.link_checker import LinkChecker, LinkAnalysis
     from seo_checker.report_generator import ReportGenerator
 except ModuleNotFoundError:
     from http_client import HttpClient
-    from meta_checker import MetaTagChecker
+    from meta_checker import MetaTagChecker, MetaTagAnalysis
     from robots_sitemap_checker import RobotsAndSitemapChecker
-    from link_checker import LinkChecker
+    from link_checker import LinkChecker, LinkAnalysis
     from report_generator import ReportGenerator
 
 from bs4 import BeautifulSoup
@@ -87,7 +87,13 @@ def analyze_website(
         html = response.text
     except Exception as e:
         print(f"Error fetching {url}: {e}")
-        sys.exit(1)
+        # Build empty objects with an error issue so reports still generate
+        meta = MetaTagAnalysis()
+        meta.issues.append({"severity": "CRITICAL", "issue": f"Failed to fetch {url}", "recommendation": f"Error: {e}"})
+        robots = RobotsAndSitemapChecker(client).check_robots(url)
+        sitemap = RobotsAndSitemapChecker(client).check_sitemaps([])
+        links = LinkAnalysis()
+        return url, meta, robots, sitemap, links
 
     soup = BeautifulSoup(html, "lxml")
 
