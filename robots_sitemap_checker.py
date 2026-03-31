@@ -150,8 +150,9 @@ class RobotsAndSitemapChecker:
 
         for sitemap_url in sitemap_urls:
             try:
-                content = self.client.fetch_text(sitemap_url)
-                self._parse_sitemap(content, sitemap_url, result)
+                response = self.client.fetch(sitemap_url)
+                final_url = response.url
+                self._parse_sitemap(response.text, final_url, result)
             except Exception as e:
                 result.issues.append(
                     {

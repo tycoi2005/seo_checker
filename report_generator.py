@@ -327,7 +327,16 @@ class ReportGenerator:
         md.append(f"- **Internal Links:** {len(links.internal_links)}")
         md.append(f"- **External Links:** {len(links.external_links)}")
         md.append(f"- **Broken Links:** {len(links.broken_links)}")
+        if links.broken_links:
+            for link in links.broken_links:
+                md.append(f"  - [{link.href}]({link.href}) (Status: {link.status_code})")
         md.append(f"- **Orphaned Pages:** {len(links.orphaned_pages)}")
+        if links.orphaned_pages:
+            for page in links.orphaned_pages:
+                # Include the full path if possible
+                path = page.get("path", "")
+                full_url = f"{url.rstrip('/')}{path}"
+                md.append(f"  - [{path}]({full_url})")
         md.append("")
 
         md.append("## Issues Summary")
@@ -401,10 +410,10 @@ class ReportGenerator:
             },
             "links": {
                 "total_links": links.total_links,
-                "internal_links": len(links.internal_links),
-                "external_links": len(links.external_links),
-                "broken_links": len(links.broken_links),
-                "orphaned_pages": len(links.orphaned_pages),
+                "internal_links_count": len(links.internal_links),
+                "external_links_count": len(links.external_links),
+                "broken_links": [{"href": l.href, "status": l.status_code} for l in links.broken_links],
+                "orphaned_pages": links.orphaned_pages,
                 "issues": links.issues,
             },
         }

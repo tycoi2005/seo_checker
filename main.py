@@ -2,6 +2,9 @@
 
 import argparse
 import sys
+import os
+from urllib.parse import urlparse
+from datetime import datetime
 
 try:
     from seo_checker.http_client import HttpClient
@@ -99,6 +102,10 @@ def analyze_website(
     robots = robots_checker.check_robots(url)
 
     sitemap_urls = robots.sitemap_urls if robots.exists else []
+    if not sitemap_urls:
+        # Fallback to default sitemap.xml if none found in robots.txt
+        sitemap_urls = [url.rstrip("/") + "/sitemap.xml"]
+
     sitemap = robots_checker.check_sitemaps(sitemap_urls)
 
     # Collect all sitemap URLs for orphaned page detection
@@ -131,6 +138,24 @@ def main():
     )
 
     reporter = ReportGenerator()
+
+    # Automatically save a markdown report to the results folder
+    domain = urlparse(url).netloc.replace("www.", "")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # Create results dir in the seo_checker directory
+    results_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "results"))
+    os.makedirs(results_dir, exist_ok=True)
+
+    auto_report_path = os.path.join(results_dir, f"{domain}_{timestamp}.md")
+    with open(auto_report_path, "w") as f:
+        f.write(reporter.generate_markdown_report(url, meta, robots, sitemap, links))
+
+    auto_json_path = os.path.join(results_dir, f"{domain}_{timestamp}.json")
+    with open(auto_json_path, "w") as f:
+        f.write(reporter.generate_json_report(url, meta, robots, sitemap, links))
+
+    print(f"\n[+] Full reports automatically saved for review:\n    - {auto_report_path}\n    - {auto_json_path}\n")
 
     if args.format == "console":
         reporter.print_console_report(url, meta, robots, sitemap, links)
