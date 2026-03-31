@@ -1,5 +1,14 @@
 """Report generation module for SEO analysis results."""
 
+try:
+    from seo_checker.meta_checker import MetaTagAnalysis, MetaTagIssue
+    from seo_checker.robots_sitemap_checker import RobotsAnalysis, SitemapAnalysis
+    from seo_checker.link_checker import LinkAnalysis
+except ModuleNotFoundError:
+    from meta_checker import MetaTagAnalysis, MetaTagIssue
+    from robots_sitemap_checker import RobotsAnalysis, SitemapAnalysis
+    from link_checker import LinkAnalysis
+
 import json
 from datetime import datetime
 from typing import Optional
@@ -7,10 +16,6 @@ from typing import Optional
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
-
-from seo_checker.meta_checker import MetaTagAnalysis, MetaTagIssue
-from seo_checker.robots_sitemap_checker import RobotsAnalysis, SitemapAnalysis
-from seo_checker.link_checker import LinkAnalysis
 
 
 def _normalize_issue(issue) -> dict:
@@ -129,7 +134,11 @@ class ReportGenerator:
                     f"\n[dim]Crawl-delay:[/dim] {robots.crawl_delay} seconds"
                 )
         else:
-            self.console.print("[red]✗[/red] robots.txt not found")
+            for issue in robots.issues:
+                self.console.print(
+                    f"[red]✗[/red] {issue.get('issue', 'Could not fetch robots.txt')}"
+                )
+                self.console.print(f"  [dim]→ {issue.get('recommendation', '')}[/dim]")
 
         self.console.print()
 
@@ -159,7 +168,11 @@ class ReportGenerator:
                 for url in sitemap.sitemap_urls[:10]:
                     self.console.print(f"  • {url}")
         else:
-            self.console.print("[red]✗[/red] Sitemap not found")
+            for issue in sitemap.issues:
+                self.console.print(
+                    f"[red]✗[/red] {issue.get('issue', 'Could not fetch sitemap')}"
+                )
+                self.console.print(f"  [dim]→ {issue.get('recommendation', '')}[/dim]")
 
         self.console.print()
 

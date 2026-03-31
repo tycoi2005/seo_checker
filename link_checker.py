@@ -1,11 +1,14 @@
 """Link analysis module for finding broken and orphaned links."""
 
+try:
+    from seo_checker.http_client import HttpClient
+except ModuleNotFoundError:
+    from http_client import HttpClient
+
 from dataclasses import dataclass, field
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
-
-from seo_checker.http_client import HttpClient
 
 
 @dataclass

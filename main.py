@@ -3,13 +3,20 @@
 import argparse
 import sys
 
-from bs4 import BeautifulSoup
+try:
+    from seo_checker.http_client import HttpClient
+    from seo_checker.meta_checker import MetaTagChecker
+    from seo_checker.robots_sitemap_checker import RobotsAndSitemapChecker
+    from seo_checker.link_checker import LinkChecker
+    from seo_checker.report_generator import ReportGenerator
+except ModuleNotFoundError:
+    from http_client import HttpClient
+    from meta_checker import MetaTagChecker
+    from robots_sitemap_checker import RobotsAndSitemapChecker
+    from link_checker import LinkChecker
+    from report_generator import ReportGenerator
 
-from seo_checker.http_client import HttpClient
-from seo_checker.meta_checker import MetaTagChecker
-from seo_checker.robots_sitemap_checker import RobotsAndSitemapChecker
-from seo_checker.link_checker import LinkChecker
-from seo_checker.report_generator import ReportGenerator
+from bs4 import BeautifulSoup
 
 
 def parse_args():

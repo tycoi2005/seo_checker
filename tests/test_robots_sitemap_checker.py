@@ -7,10 +7,16 @@ from seo_checker.robots_sitemap_checker import (
 )
 
 
+def _mock_response(text: str) -> MagicMock:
+    resp = MagicMock()
+    resp.text = text
+    return resp
+
+
 class TestCheckRobots:
     def test_missing_robots_txt(self):
         client = MagicMock()
-        client.fetch_text.side_effect = Exception("Not found")
+        client.fetch.side_effect = Exception("404 Client Error: Not Found")
         checker = RobotsAndSitemapChecker(client)
         result = checker.check_robots("https://example.com")
         assert result.exists is False
@@ -18,7 +24,7 @@ class TestCheckRobots:
 
     def test_valid_robots_txt(self):
         client = MagicMock()
-        client.fetch_text.return_value = (
+        client.fetch.return_value = _mock_response(
             "User-agent: *\nAllow: /\nSitemap: https://example.com/sitemap.xml"
         )
         checker = RobotsAndSitemapChecker(client)
@@ -28,7 +34,7 @@ class TestCheckRobots:
 
     def test_crawl_delay_warning(self):
         client = MagicMock()
-        client.fetch_text.return_value = (
+        client.fetch.return_value = _mock_response(
             "User-agent: *\nDisallow: /admin/\nCrawl-delay: 10"
         )
         checker = RobotsAndSitemapChecker(client)
@@ -41,7 +47,7 @@ class TestCheckRobots:
 
     def test_no_sitemap_declaration(self):
         client = MagicMock()
-        client.fetch_text.return_value = "User-agent: *\nDisallow: /admin/"
+        client.fetch.return_value = _mock_response("User-agent: *\nDisallow: /admin/")
         checker = RobotsAndSitemapChecker(client)
         result = checker.check_robots("https://example.com")
         assert any(
@@ -51,13 +57,21 @@ class TestCheckRobots:
 
     def test_disallowed_paths(self):
         client = MagicMock()
-        client.fetch_text.return_value = (
+        client.fetch.return_value = _mock_response(
             "User-agent: *\nDisallow: /admin/\nDisallow: /private/"
         )
         checker = RobotsAndSitemapChecker(client)
         result = checker.check_robots("https://example.com")
         assert "/admin/" in result.disallowed_paths
         assert "/private/" in result.disallowed_paths
+
+    def test_blocked_robots_txt(self):
+        client = MagicMock()
+        client.fetch.side_effect = Exception("403 Client Error: Forbidden")
+        checker = RobotsAndSitemapChecker(client)
+        result = checker.check_robots("https://example.com")
+        assert result.exists is False
+        assert any("blocked" in i["issue"] for i in result.issues)
 
 
 class TestCheckSitemaps:

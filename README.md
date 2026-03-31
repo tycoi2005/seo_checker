@@ -6,6 +6,11 @@ A Python CLI tool that audits any website for SEO issues — meta tags, robots.t
 
 ```bash
 pip install -r requirements.txt
+
+# From inside this directory
+python main.py https://example.com
+
+# Or from the parent directory
 python -m seo_checker.main https://example.com
 ```
 
@@ -51,7 +56,7 @@ That's it. You get a color-coded report in your terminal.
 ## Usage
 
 ```
-python -m seo_checker.main <url> [options]
+python main.py <url> [options]
 
 Positional:
   url                   URL of the website to analyze
@@ -69,19 +74,19 @@ Options:
 
 ```bash
 # Quick audit with console output
-python -m seo_checker.main https://example.com
+python main.py https://example.com
 
 # Save markdown report
-python -m seo_checker.main https://example.com --format markdown -o report.md
+python main.py https://example.com --format markdown -o report.md
 
 # Save JSON for CI/CD or dashboards
-python -m seo_checker.main https://example.com --format json -o report.json
+python main.py https://example.com --format json -o report.json
 
 # Check for broken links (slower, checks up to 50 by default)
-python -m seo_checker.main https://example.com --check-links
+python main.py https://example.com --check-links
 
 # Check more links on a large site
-python -m seo_checker.main https://example.com --check-links --max-link-checks 200
+python main.py https://example.com --check-links --max-link-checks 200
 ```
 
 ## Output

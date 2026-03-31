@@ -1,12 +1,15 @@
 """Robots.txt and sitemap analysis module."""
 
+try:
+    from seo_checker.http_client import HttpClient
+except ModuleNotFoundError:
+    from http_client import HttpClient
+
 from dataclasses import dataclass, field
 from typing import Optional
 from urllib.parse import urljoin
 
 import xml.etree.ElementTree as ET
-
-from seo_checker.http_client import HttpClient
 
 
 @dataclass
@@ -57,16 +60,35 @@ class RobotsAndSitemapChecker:
         robots_url = urljoin(base_url, "/robots.txt")
 
         try:
-            result.content = self.client.fetch_text(robots_url)
+            response = self.client.fetch(robots_url)
+            result.content = response.text
             result.exists = True
-        except Exception:
-            result.issues.append(
-                {
-                    "severity": "HIGH",
-                    "issue": "Missing robots.txt file",
-                    "recommendation": "Create a robots.txt file to guide search engine crawlers",
-                }
-            )
+        except Exception as e:
+            error_msg = str(e)
+            if "404" in error_msg:
+                result.issues.append(
+                    {
+                        "severity": "HIGH",
+                        "issue": "Missing robots.txt file",
+                        "recommendation": "Create a robots.txt file to guide search engine crawlers",
+                    }
+                )
+            elif "403" in error_msg or "401" in error_msg:
+                result.issues.append(
+                    {
+                        "severity": "HIGH",
+                        "issue": f"robots.txt blocked ({error_msg})",
+                        "recommendation": "The server is blocking automated requests. The file may exist but cannot be fetched. Try checking manually in a browser.",
+                    }
+                )
+            else:
+                result.issues.append(
+                    {
+                        "severity": "HIGH",
+                        "issue": f"Could not fetch robots.txt: {error_msg}",
+                        "recommendation": "Check if the site is accessible. The file may exist but cannot be reached.",
+                    }
+                )
             return result
 
         lines = result.content.strip().split("\n")
