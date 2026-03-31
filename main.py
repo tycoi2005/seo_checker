@@ -1,0 +1,149 @@
+"""SEO Checker CLI - Analyze any website for SEO issues."""
+
+import argparse
+import sys
+
+from bs4 import BeautifulSoup
+
+from seo_checker.http_client import HttpClient
+from seo_checker.meta_checker import MetaTagChecker
+from seo_checker.robots_sitemap_checker import RobotsAndSitemapChecker
+from seo_checker.link_checker import LinkChecker
+from seo_checker.report_generator import ReportGenerator
+
+
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="SEO Checker - Analyze websites for SEO issues",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python -m seo_checker.main https://example.com
+  python -m seo_checker.main https://example.com --format json
+  python -m seo_checker.main https://example.com --format markdown -o report.md
+  python -m seo_checker.main https://example.com --check-links
+        """,
+    )
+
+    parser.add_argument(
+        "url",
+        help="URL of the website to analyze",
+    )
+    parser.add_argument(
+        "--format",
+        choices=["console", "markdown", "json"],
+        default="console",
+        help="Output format (default: console)",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        help="Output file path (for markdown/json formats)",
+    )
+    parser.add_argument(
+        "--check-links",
+        action="store_true",
+        help="Check HTTP status of internal links (slower)",
+    )
+    parser.add_argument(
+        "--max-link-checks",
+        type=int,
+        default=50,
+        help="Maximum number of links to check (default: 50)",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=30,
+        help="HTTP request timeout in seconds (default: 30)",
+    )
+
+    return parser.parse_args()
+
+
+def analyze_website(
+    url: str, check_links: bool = False, max_link_checks: int = 50, timeout: int = 30
+):
+    """Run full SEO analysis on a website."""
+    client = HttpClient(timeout=timeout)
+    url = HttpClient.normalize_url(url)
+
+    print(f"Analyzing: {url}")
+    print("Fetching page...")
+
+    try:
+        response = client.fetch(url)
+        html = response.text
+    except Exception as e:
+        print(f"Error fetching {url}: {e}")
+        sys.exit(1)
+
+    soup = BeautifulSoup(html, "lxml")
+
+    # Meta tag analysis
+    print("Checking meta tags...")
+    meta_checker = MetaTagChecker()
+    meta = meta_checker.analyze(soup, url)
+
+    # Robots.txt and sitemap analysis
+    print("Checking robots.txt and sitemaps...")
+    robots_checker = RobotsAndSitemapChecker(client)
+    robots = robots_checker.check_robots(url)
+
+    sitemap_urls = robots.sitemap_urls if robots.exists else []
+    sitemap = robots_checker.check_sitemaps(sitemap_urls)
+
+    # Collect all sitemap URLs for orphaned page detection
+    all_sitemap_urls = set()
+    for entry in sitemap.all_entries:
+        all_sitemap_urls.add(entry.loc)
+
+    # Link analysis
+    print("Analyzing links...")
+    link_checker = LinkChecker(client)
+    links = link_checker.analyze_links(soup, url, all_sitemap_urls)
+
+    if check_links:
+        print(f"Checking HTTP status of up to {max_link_checks} internal links...")
+        broken = link_checker.check_link_status(links.internal_links, max_link_checks)
+        links.broken_links = broken
+
+    return url, meta, robots, sitemap, links
+
+
+def main():
+    """Main entry point."""
+    args = parse_args()
+
+    url, meta, robots, sitemap, links = analyze_website(
+        args.url,
+        check_links=args.check_links,
+        max_link_checks=args.max_link_checks,
+        timeout=args.timeout,
+    )
+
+    reporter = ReportGenerator()
+
+    if args.format == "console":
+        reporter.print_console_report(url, meta, robots, sitemap, links)
+    elif args.format == "markdown":
+        report = reporter.generate_markdown_report(url, meta, robots, sitemap, links)
+        if args.output:
+            with open(args.output, "w") as f:
+                f.write(report)
+            print(f"Report saved to {args.output}")
+        else:
+            print(report)
+    elif args.format == "json":
+        report = reporter.generate_json_report(url, meta, robots, sitemap, links)
+        if args.output:
+            with open(args.output, "w") as f:
+                f.write(report)
+            print(f"Report saved to {args.output}")
+        else:
+            print(report)
+
+
+if __name__ == "__main__":
+    main()
